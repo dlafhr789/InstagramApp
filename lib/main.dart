@@ -1,17 +1,25 @@
-
 import 'package:flutter/material.dart';
-import './style.dart' as style;
+// import './style.dart' as style;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   runApp(
-      MaterialApp(
-          // theme : style.theme,
-          home : MyApp()
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (c) => Store1()),
+          ChangeNotifierProvider(create: (c) => Store2()),
+        ],
+        child: MaterialApp(
+            // theme : style.theme,
+            home : MyApp()
+        ),
       )
   );
 }
@@ -30,6 +38,15 @@ class _MyAppState extends State<MyApp> {
   var data = [];
   var userimage;
   var userContent;
+
+  saveData() async {
+    var storage = await SharedPreferences.getInstance();
+
+    var map = {'age' : 20};
+    storage.setString('map', jsonEncode(map));
+    var result = storage.getString("map") ?? "없는데요";
+    print(jsonDecode(result));
+  }
 
   addMyData(){
     var myData = {'id' : data.length, 'image' : userimage, 'likes' : 881, 'date' : 'August 13', 'content' : userContent, 'liked' : false, 'user' : 'HyeonJe Jang'};
@@ -76,6 +93,7 @@ class _MyAppState extends State<MyApp> {
     // TODO: implement initState
     super.initState();
     getdata();
+    saveData();
   }
 
   @override
@@ -167,9 +185,14 @@ class _homePageState extends State<homePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  GestureDetector(onTap: (){
+                    Navigator.push(context,
+                      CupertinoPageRoute(builder: (c) => Profile())
+                    );
+                  }, child: Text(widget.data[i]['user']),),
                   Text('좋아요 ${widget.data[i]['likes']}',style: TextStyle(color: Colors.black),),
                   Text(widget.data[i]['content'],style: TextStyle(color: Colors.black),),
-                  Text(widget.data[i]['user'],style: TextStyle(color: Colors.black),),
+                  Text(widget.data[i]['date'],style: TextStyle(color: Colors.black),),
                 ],
               ),
             )
@@ -235,6 +258,70 @@ class upload extends StatelessWidget {
           )
         ],
       ),
+    );
+  }
+}
+
+
+class Store1 extends ChangeNotifier {
+  var follower = 0;
+  var followed = false;
+  var followText = '팔로우';
+  var profileImage = [];
+
+  getData() async {
+    var result = await http.get(Uri.parse('https://codingapple1.github.io/app/profile.json'));
+    var result2 = jsonDecode(result.body);
+    profileImage = result2;
+    notifyListeners();
+  }
+
+  addFollower(){
+    !followed ? (follower++, followed = true, followText = '언팔로우') : (follower--, followed = false, followText = '팔로우');
+    print(followed);
+    notifyListeners();
+  }
+}
+
+class Store2 extends ChangeNotifier {
+  var name = 'john kim';
+  changeName(){
+    name = 'john park';
+    notifyListeners();
+  }
+}
+
+class Profile extends StatelessWidget {
+  const Profile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(context.watch<Store2>().name, style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+      ),
+      body: Column(
+        children: [
+          // ElevatedButton(onPressed: (){
+          //   context.read<Store1>().changeName();
+          //   }, child: Text('changName')),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Icon(Icons.circle, color: Colors.grey, size: 70,),
+              Center(child: Text('팔로워 ${context.watch<Store1>().follower}명')),
+              ElevatedButton(onPressed: (){
+                context.read<Store1>().addFollower();
+              }, child: Center(child: Text(context.read<Store1>().followText))),
+              ElevatedButton(onPressed: (){
+                context.read<Store1>().getData();
+              }, child: Center(child: Text('사진 가져오기'))),
+            ],
+          )
+        ],
+      ),
+
     );
   }
 }
