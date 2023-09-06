@@ -8,6 +8,9 @@ import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'notification.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_app_installations/firebase_app_installations.dart';
 
 void main() {
   runApp(
@@ -38,6 +41,7 @@ class _MyAppState extends State<MyApp> {
   var data = [];
   var userimage;
   var userContent;
+
 
   saveData() async {
     var storage = await SharedPreferences.getInstance();
@@ -92,6 +96,7 @@ class _MyAppState extends State<MyApp> {
   void initState(){
     // TODO: implement initState
     super.initState();
+    initNotification(context);
     getdata();
     saveData();
   }
@@ -99,6 +104,9 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(onPressed: (){
+        showNotification();
+      },child: Text('Alert')),
       appBar: AppBar(
         elevation: 1,
         backgroundColor: Colors.white,
@@ -273,6 +281,7 @@ class Store1 extends ChangeNotifier {
     var result = await http.get(Uri.parse('https://codingapple1.github.io/app/profile.json'));
     var result2 = jsonDecode(result.body);
     profileImage = result2;
+    print(profileImage);
     notifyListeners();
   }
 
@@ -301,27 +310,38 @@ class Profile extends StatelessWidget {
         title: Text(context.watch<Store2>().name, style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
       ),
-      body: Column(
-        children: [
-          // ElevatedButton(onPressed: (){
-          //   context.read<Store1>().changeName();
-          //   }, child: Text('changName')),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Icon(Icons.circle, color: Colors.grey, size: 70,),
-              Center(child: Text('팔로워 ${context.watch<Store1>().follower}명')),
-              ElevatedButton(onPressed: (){
-                context.read<Store1>().addFollower();
-              }, child: Center(child: Text(context.read<Store1>().followText))),
-              ElevatedButton(onPressed: (){
-                context.read<Store1>().getData();
-              }, child: Center(child: Text('사진 가져오기'))),
-            ],
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(child: profileHeader(),),
+          SliverGrid.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+            itemBuilder: (c,i){ return Container(child: Image.network(context.watch<Store1>().profileImage[i].toString()),);},
+            itemCount: 6,
           )
         ],
       ),
-
     );
   }
 }
+
+class profileHeader extends StatelessWidget {
+  const profileHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        Icon(Icons.circle, color: Colors.grey, size: 70,),
+        Center(child: Text('팔로워 ${context.watch<Store1>().follower}명')),
+        ElevatedButton(onPressed: (){
+          context.read<Store1>().addFollower();
+        }, child: Center(child: Text(context.read<Store1>().followText))),
+        ElevatedButton(onPressed: (){
+          context.read<Store1>().getData();
+        }, child: Center(child: Text('사진 가져오기'))),
+      ],
+    );
+  }
+}
+
